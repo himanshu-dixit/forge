@@ -9,8 +9,7 @@
   },
   "files": [
     "dist",
-    "README.md",
-    ".npmrc"
+    "README.md"
   ],
   "scripts": {
     "dev": "bun run src/cli.ts",

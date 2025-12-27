@@ -50,17 +50,29 @@ jobs:
         working-directory: packages/gityard
         run: bun run build
 
+      - name: Configure npm registry
+        working-directory: packages/gityard
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+
       - name: Extract version from tag
         id: get_version
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.version }}"
+            IS_RC="${{ github.event.inputs.is_rc }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+            if [[ "$TAG" == *"rc"* ]]; then
+              IS_RC="true"
+            else
+              IS_RC="false"
+            fi
+          fi
           echo "tag_name=$TAG" >> $GITHUB_OUTPUT
-          # Check if this is an RC release
-          if [[ "$TAG" == *"rc"* ]]; then
-            echo "is_rc=true" >> $GITHUB_OUTPUT
+          echo "is_rc=$IS_RC" >> $GITHUB_OUTPUT
+          if [ "$IS_RC" == "true" ]; then
             echo "npm_tag=rc" >> $GITHUB_OUTPUT
           else
-            echo "is_rc=false" >> $GITHUB_OUTPUT
             echo "npm_tag=latest" >> $GITHUB_OUTPUT
           fi
         shell: bash
@@ -71,15 +83,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && steps.get_version.outputs.is_rc == 'false'
         working-directory: packages/gityard
         run: bun publish --access public --tag latest
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to npm (rc)
         if: matrix.os == 'ubuntu-latest' && steps.get_version.outputs.is_rc == 'true'
         working-directory: packages/gityard
         run: bun publish --access public --tag rc
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         if: matrix.os == 'ubuntu-latest'
