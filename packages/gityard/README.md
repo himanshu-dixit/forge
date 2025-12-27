@@ -1,6 +1,6 @@
-# gityard 🛤️
+<img src="./assets/logo.png" alt="gityard Logo" width="80" />
 
-<img src="./assets/logo.png" alt="gityard Logo" width="200" />
+# Gityard - Simple worktree SDK & CLI
 
 CLI and ESM module for managing Git worktrees with ease.
 
