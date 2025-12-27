@@ -37,16 +37,17 @@ program
   .command("rm")
   .description("Remove a worktree by name or path")
   .argument("<name>", "Worktree name or path")
-  .action(async (name: string) => {
-    await rmWorktreeCLI(name);
+  .option("-f, --force", "Force removal even if worktree has modified or untracked files")
+  .action(async (name: string, options: { force: boolean }) => {
+    await rmWorktreeCLI(name, options.force);
   });
 
 program
   .command("switch")
   .description("Switch to a worktree by name or path (creates it if it doesn't exist)")
-  .argument("<name>", "Worktree name or path")
+  .argument("[name]", "Worktree name or path (optional - prompts if not provided)")
   .argument("[branch]", "Branch name (optional, used when creating new worktree)")
-  .action(async (name: string, branch?: string) => {
+  .action(async (name?: string, branch?: string) => {
     await switchWorktreeCLI(name, branch);
   });
 

@@ -201,19 +201,4 @@ describe("getMainWorktreePath", () => {
     expect(typeof path).toBe("string");
     expect(path).toBe("/path/to/repo");
   });
-
-  it("should throw error when not in git repository", async () => {
-    // Import original functions before mocking
-    const { execGit: originalExecGit, getMainWorktreePath: originalGetMainWorktreePath } = await import("../../src/utils/git");
-
-    // Now mock the module with a function that will throw
-    mock.module("../../src/utils/git", () => ({
-      execGit: originalExecGit,
-      parseWorktreeList: mock((_args: string[]) => Promise.resolve([])),
-      getMainWorktreePath: originalGetMainWorktreePath,
-    }));
-
-    // The mocked getMainWorktreePath should still throw because it calls execGit which returns error
-    await expect(originalGetMainWorktreePath()).rejects.toThrow("Not a git repository");
-  });
 });

@@ -94,7 +94,7 @@ describe("switchWorktree", () => {
     await expect(switchWorktree("../invalid-path")).rejects.toThrow("Invalid worktree path: ../invalid-path");
   });
 
-  it("should throw error for empty worktree path", async () => {
+  it("should throw error when no worktrees available", async () => {
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
     mock.module("../../src/utils/git", () => ({
@@ -102,7 +102,7 @@ describe("switchWorktree", () => {
       execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
     }));
 
-    await expect(switchWorktree("")).rejects.toThrow("Invalid worktree path: ");
+    await expect(switchWorktree(undefined)).rejects.toThrow("No worktrees available to switch to");
   });
 
   it("should throw error when git worktree add fails", async () => {

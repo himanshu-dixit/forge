@@ -1,5 +1,7 @@
 # gityard 🛤️
 
+<img src="./assets/logo.png" alt="gityard Logo" width="200" />
+
 CLI and ESM module for managing Git worktrees with ease.
 
 Inspired by [https://steveasleep.com](https://steveasleep.com)
