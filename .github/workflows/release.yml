@@ -50,10 +50,6 @@ jobs:
         working-directory: packages/gityard
         run: bun run build
 
-      - name: Configure npm registry
-        working-directory: packages/gityard
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
-
       - name: Extract version from tag
         id: get_version
         run: |
@@ -79,15 +75,20 @@ jobs:
         env:
           GITHUB_REF: ${{ github.ref }}
 
+      - name: Setup npm config
+        working-directory: packages/gityard
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+
       - name: Publish to npm (stable)
         if: matrix.os == 'ubuntu-latest' && steps.get_version.outputs.is_rc == 'false'
         working-directory: packages/gityard
-        run: bun publish --access public --tag latest
+        run: npm publish --access public --tag latest
 
       - name: Publish to npm (rc)
         if: matrix.os == 'ubuntu-latest' && steps.get_version.outputs.is_rc == 'true'
         working-directory: packages/gityard
-        run: bun publish --access public --tag rc
+        run: npm publish --access public --tag rc
 
       - name: Create GitHub Release
         if: matrix.os == 'ubuntu-latest'
