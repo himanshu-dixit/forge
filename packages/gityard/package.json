@@ -3,17 +3,18 @@
   "version": "0.1.0",
   "description": "CLI and ESM module for managing Git worktrees with ease.",
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
   "bin": {
-    "gityard": "./src/cli.ts"
+    "gityard": "./dist/cli.js"
   },
   "files": [
-    "src",
-    "README.md"
+    "dist",
+    "README.md",
+    ".npmrc"
   ],
   "scripts": {
     "dev": "bun run src/cli.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
+    "build": "bun build src/cli.ts --outdir dist --target bun && bun build src/index.ts --outdir dist --target bun",
     "test": "bun test",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
