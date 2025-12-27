@@ -1,0 +1,9 @@
+[install]
+# Automatically install peer dependencies
+peer = true
+
+# Use exact versions
+exact = false
+
+# Production mode by default
+production = false

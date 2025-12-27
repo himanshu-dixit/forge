@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-publish:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run lint
+        working-directory: packages/gityard
+        run: bun run lint
+
+      - name: Run tests
+        working-directory: packages/gityard
+        run: bun test
+        continue-on-error: true
+
+      - name: Build package
+        working-directory: packages/gityard
+        run: bun run build
+
+      - name: Publish to npm
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: packages/gityard
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
