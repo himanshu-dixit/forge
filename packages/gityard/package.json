@@ -1,7 +1,7 @@
 {
   "name": "gityard",
-  "version": "1.0.0",
-  "description": "CLI and ESM module for managing Git worktrees",
+  "version": "0.1.0",
+  "description": "CLI and ESM module for managing Git worktrees with ease.",
   "type": "module",
   "main": "./src/index.ts",
   "bin": {
@@ -16,7 +16,12 @@
     "build": "bun build src/index.ts --outdir dist --target bun",
     "test": "bun test",
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix"
+    "lint:fix": "oxlint --fix",
+    "release": "bunx standard-version",
+    "release:patch": "bunx standard-version --release-as patch",
+    "release:minor": "bunx standard-version --release-as minor",
+    "release:major": "bunx standard-version --release-as major",
+    "release:rc": "bunx standard-version --prerelease rc"
   },
   "keywords": [
     "git",

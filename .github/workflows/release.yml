@@ -6,6 +6,7 @@ on:
   push:
     tags:
       - "v*"
+      - "v*rc*"
 
 jobs:
   build-and-publish:
@@ -38,9 +39,42 @@ jobs:
         working-directory: packages/gityard
         run: bun run build
 
-      - name: Publish to npm
-        if: matrix.os == 'ubuntu-latest'
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "tag_name=$TAG" >> $GITHUB_OUTPUT
+          # Check if this is an RC release
+          if [[ "$TAG" == *"rc"* ]]; then
+            echo "is_rc=true" >> $GITHUB_OUTPUT
+            echo "npm_tag=rc" >> $GITHUB_OUTPUT
+          else
+            echo "is_rc=false" >> $GITHUB_OUTPUT
+            echo "npm_tag=latest" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+        env:
+          GITHUB_REF: ${{ github.ref }}
+
+      - name: Publish to npm (stable)
+        if: matrix.os == 'ubuntu-latest' && steps.get_version.outputs.is_rc == 'false'
         working-directory: packages/gityard
-        run: npm publish --access public
+        run: npm publish --access public --tag latest
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm (rc)
+        if: matrix.os == 'ubuntu-latest' && steps.get_version.outputs.is_rc == 'true'
+        working-directory: packages/gityard
+        run: npm publish --access public --tag rc
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        if: matrix.os == 'ubuntu-latest'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag_name }}
+          name: Release ${{ steps.get_version.outputs.tag_name }}
+          body: |
+            ${{ github.event.release.body || 'Automated release' }}

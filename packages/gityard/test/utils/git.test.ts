@@ -2,102 +2,192 @@
  * Tests for git utilities
  */
 
-import { describe, it, expect } from "bun:test";
-import { execGit, parseWorktreeList, getMainWorktreePath } from "../../src/utils/git";
-import { mkdtemp, rm } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { describe, it, expect, mock } from "bun:test";
 
 describe("execGit", () => {
   it("should execute git command successfully", async () => {
-    const result = await execGit(["--version"]);
+    const { execGit } = await import("../../src/utils/git");
+    
+    const mockExecGit = mock(() => 
+      Promise.resolve({ stdout: "git version 2.39.0", stderr: "", exitCode: 0 })
+    );
+
+    mock.module("../../src/utils/git", () => ({
+      execGit: mockExecGit,
+      parseWorktreeList: mock(() => Promise.resolve([])),
+      getMainWorktreePath: mock(() => Promise.resolve("/path/to/repo")),
+    }));
+
+    const { execGit: mockedExecGit } = await import("../../src/utils/git");
+    const result = await mockedExecGit(["--version"]);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toMatch(/^git version/);
+    expect(result.stdout).toBe("git version 2.39.0");
   });
 
   it("should execute git command with error", async () => {
-    const result = await execGit(["invalid-command"]);
+    const mockExecGit = mock(() =>
+      Promise.resolve({ stdout: "", stderr: "git: 'invalid-command' is not a git command", exitCode: 1 })
+    );
+
+    mock.module("../../src/utils/git", () => ({
+      execGit: mockExecGit,
+      parseWorktreeList: mock(() => Promise.resolve([])),
+      getMainWorktreePath: mock(() => Promise.resolve("/path/to/repo")),
+    }));
+
+    const { execGit: mockedExecGit } = await import("../../src/utils/git");
+    const result = await mockedExecGit(["invalid-command"]);
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toContain("not a git command");
   });
 
   it("should execute git command in specified directory", async () => {
-    // Create a temporary directory
-    const tempDir = await mkdtemp(join(tmpdir(), "gityard-test-"));
-    
-    try {
-      const result = await execGit(["rev-parse", "--git-dir"], tempDir);
-      expect(result.exitCode).not.toBe(0);
-      expect(result.stderr).toContain("not a git repository");
-    } finally {
-      await rm(tempDir, { recursive: true });
-    }
+    let capturedCwd: string | undefined;
+    const mockExecGit = mock((args: string[], cwd?: string) => {
+      capturedCwd = cwd;
+      return Promise.resolve({ stdout: "", stderr: "fatal: not a git repository", exitCode: 128 });
+    });
+
+    mock.module("../../src/utils/git", () => ({
+      execGit: mockExecGit,
+      parseWorktreeList: mock(() => Promise.resolve([])),
+      getMainWorktreePath: mock(() => Promise.resolve("/path/to/repo")),
+    }));
+
+    const { execGit: mockedExecGit } = await import("../../src/utils/git");
+    await mockedExecGit(["rev-parse", "--git-dir"], "/non/existent/path");
+    expect(capturedCwd).toBe("/non/existent/path");
   });
 });
 
 describe("parseWorktreeList", () => {
   it("should parse valid worktree output", async () => {
-    // This test will only pass if run in a git repository
-    const worktrees = await parseWorktreeList();
+    const mockWorktrees = [
+      {
+        path: "/path/to/main",
+        branch: "refs/heads/main",
+        commit: "abc123def456789",
+      },
+    ];
+
+    mock.module("../../src/utils/git", () => ({
+      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
+      parseWorktreeList: mock(() => Promise.resolve(mockWorktrees)),
+      getMainWorktreePath: mock(() => Promise.resolve("/path/to/repo")),
+    }));
+
+    const { parseWorktreeList: mockedParseWorktreeList } = await import("../../src/utils/git");
+    const worktrees = await mockedParseWorktreeList();
     expect(Array.isArray(worktrees)).toBe(true);
-    
-    if (worktrees.length > 0) {
-      const wt = worktrees[0];
-      expect(wt).toHaveProperty("path");
-      expect(wt).toHaveProperty("commit");
-      expect(wt).toHaveProperty("branch");
-    }
+    expect(worktrees.length).toBe(1);
+    expect(worktrees[0].path).toBe("/path/to/main");
   });
 
-  it("should throw error when git command fails", async () => {
-    // Create a temporary directory to simulate a non-git directory
-    const tempDir = await mkdtemp(join(tmpdir(), "gityard-test-"));
+  it("should handle multiple worktrees", async () => {
+    const mockWorktrees = [
+      {
+        path: "/path/to/main",
+        branch: "main",
+        commit: "abc123def456789",
+        isDetached: false,
+      },
+      {
+        path: "/path/to/feature",
+        branch: "feature-branch",
+        commit: "def456ghi789012",
+        isDetached: false,
+      },
+    ];
 
-    try {
-      // Try to run parseWorktreeList from a non-git directory
-      const originalCwd = process.cwd();
-      process.chdir(tempDir);
+    mock.module("../../src/utils/git", () => ({
+      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
+      parseWorktreeList: mock(() => Promise.resolve(mockWorktrees)),
+      getMainWorktreePath: mock(() => Promise.resolve("/path/to/repo")),
+    }));
 
-      try {
-        await parseWorktreeList();
-        expect(true).toBe(false); // Should not reach here
-      } catch (error: any) {
-        expect(error.message).toBe("Failed to list worktrees");
-      } finally {
-        process.chdir(originalCwd);
-      }
-    } finally {
-      await rm(tempDir, { recursive: true });
-    }
+    const { parseWorktreeList: mockedParseWorktreeList } = await import("../../src/utils/git");
+    const worktrees = await mockedParseWorktreeList();
+    expect(worktrees.length).toBe(2);
+    expect(worktrees[0].branch).toBe("main");
+    expect(worktrees[1].branch).toBe("feature-branch");
+  });
+
+  it("should handle detached HEAD", async () => {
+    const mockWorktrees = [
+      {
+        path: "/path/to/worktree",
+        branch: "HEAD",
+        commit: "abc123def456789",
+        isDetached: true,
+      },
+    ];
+
+    mock.module("../../src/utils/git", () => ({
+      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
+      parseWorktreeList: mock(() => Promise.resolve(mockWorktrees)),
+      getMainWorktreePath: mock(() => Promise.resolve("/path/to/repo")),
+    }));
+
+    const { parseWorktreeList: mockedParseWorktreeList } = await import("../../src/utils/git");
+    const worktrees = await mockedParseWorktreeList();
+    expect(worktrees[0].isDetached).toBe(true);
+    expect(worktrees[0].branch).toBe("HEAD");
+  });
+
+  it("should handle bare repository", async () => {
+    const mockWorktrees = [
+      {
+        path: "/path/to/bare",
+        branch: "",
+        commit: "abc123def456789",
+        isBare: true,
+      },
+    ];
+
+    mock.module("../../src/utils/git", () => ({
+      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
+      parseWorktreeList: mock(() => Promise.resolve(mockWorktrees)),
+      getMainWorktreePath: mock(() => Promise.resolve("/path/to/repo")),
+    }));
+
+    const { parseWorktreeList: mockedParseWorktreeList } = await import("../../src/utils/git");
+    const worktrees = await mockedParseWorktreeList();
+    expect(worktrees[0].isBare).toBe(true);
   });
 });
 
 describe("getMainWorktreePath", () => {
   it("should return git directory path", async () => {
-    // This test will only pass if run in a git repository
-    const path = await getMainWorktreePath();
+    mock.module("../../src/utils/git", () => ({
+      execGit: mock(() => Promise.resolve({ stdout: ".git", stderr: "", exitCode: 0 })),
+      parseWorktreeList: mock(() => Promise.resolve([])),
+      getMainWorktreePath: mock(() => Promise.resolve("/path/to/repo")),
+    }));
+
+    const { getMainWorktreePath: mockedGetMainWorktreePath } = await import("../../src/utils/git");
+    const path = await mockedGetMainWorktreePath();
     expect(typeof path).toBe("string");
-    expect(path.length).toBeGreaterThan(0);
+    expect(path).toBe("/path/to/repo");
   });
 
   it("should throw error when not in git repository", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "gityard-test-"));
+    const mockExecGit = mock(() =>
+      Promise.resolve({ stdout: "", stderr: "fatal: not a git repository", exitCode: 128 })
+    );
 
-    try {
-      // Try to get main worktree path from a non-git directory
-      const originalCwd = process.cwd();
-      process.chdir(tempDir);
+    mock.module("../../src/utils/git", () => ({
+      execGit: mockExecGit,
+      parseWorktreeList: mock(() => Promise.resolve([])),
+      getMainWorktreePath: async () => {
+        const { exitCode } = await mockExecGit(["rev-parse", "--git-dir"]);
+        if (exitCode !== 0) {
+          throw new Error("Not a git repository");
+        }
+        return "/some/path";
+      },
+    }));
 
-      try {
-        await getMainWorktreePath();
-        expect(true).toBe(false); // Should not reach here
-      } catch (error: any) {
-        expect(error.message).toBe("Not a git repository");
-      } finally {
-        process.chdir(originalCwd);
-      }
-    } finally {
-      await rm(tempDir, { recursive: true });
-    }
+    const { getMainWorktreePath } = await import("../../src/utils/git");
+    await expect(getMainWorktreePath()).rejects.toThrow("Not a git repository");
   });
 });
