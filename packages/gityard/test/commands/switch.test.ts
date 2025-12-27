@@ -4,6 +4,7 @@
 
 import { describe, it, expect, mock } from "bun:test";
 import { switchWorktree } from "../../src/commands/switch";
+import inquirer from "inquirer";
 
 describe("switchWorktree", () => {
   it("should return path when worktree exists", async () => {
@@ -94,17 +95,6 @@ describe("switchWorktree", () => {
     await expect(switchWorktree("../invalid-path")).rejects.toThrow("Invalid worktree path: ../invalid-path");
   });
 
-  it("should throw error when no worktrees available", async () => {
-    const mockParseWorktreeList = mock(() => Promise.resolve([]));
-
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
-
-    await expect(switchWorktree(undefined)).rejects.toThrow("No worktrees available to switch to");
-  });
-
   it("should throw error when git worktree add fails", async () => {
     const mockExecGit = mock(() => Promise.resolve({ stdout: "", stderr: "fatal: branch 'non-existent' does not exist", exitCode: 128 }));
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
@@ -116,4 +106,5 @@ describe("switchWorktree", () => {
 
     await expect(switchWorktree("new-worktree", "non-existent")).rejects.toThrow("Failed to create worktree: fatal: branch 'non-existent' does not exist");
   });
+
 });

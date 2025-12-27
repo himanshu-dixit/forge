@@ -69,9 +69,14 @@ gityard switch /path/to/repo/feature
 # Create new worktree (if it doesn't exist)
 gityard switch ./feature feature-branch
 # The first argument is the path, second is the branch name (optional)
+
+# Use --cd flag to automatically cd into worktree
+eval "$(gityard switch --cd feature-branch)"
 ```
 
 If the worktree doesn't exist and no branch is specified, the worktree name will be used as the branch name.
+
+The `--cd` flag outputs a `cd` command, making it easy to use with `eval` to automatically change to the worktree directory. This works in shells like bash, zsh, and fish.
 
 ### Run Script
 
@@ -162,6 +167,7 @@ interface gityardConfig {
 | `list` | List all worktrees |
 | `rm <name>` | Remove a worktree by name or path |
 | `switch <name> [branch]` | Switch to a worktree by name or path (creates it if it doesn't exist) |
+| `switch <name> [branch] --cd` | Switch to worktree and output path for easy cd (use with: `cd $(gityard switch --cd <name)`) |
 | `run <worktree> <script>` | Run a script from gityard.json in a worktree |
 
 ## Examples
@@ -181,6 +187,9 @@ gityard switch ./my-feature my-feature
 # Switch between worktrees
 gityard switch main
 gityard switch my-feature
+
+# Switch and cd into worktree in one command
+cd $(gityard switch --cd my-feature)
 
 # Run tests in a specific worktree
 gityard run my-feature test

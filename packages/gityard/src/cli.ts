@@ -47,8 +47,9 @@ program
   .description("Switch to a worktree by name or path (creates it if it doesn't exist)")
   .argument("[name]", "Worktree name or path (optional - prompts if not provided)")
   .argument("[branch]", "Branch name (optional, used when creating new worktree)")
-  .action(async (name?: string, branch?: string) => {
-    await switchWorktreeCLI(name, branch);
+  .option("--cd", "Output worktree path for easy cd (useful with: cd $(gityard switch --cd <name>)")
+  .action(async (name?: string, branch?: string, options?: { cd?: boolean }) => {
+    await switchWorktreeCLI(name, branch, options?.cd || true);
   });
 
 program

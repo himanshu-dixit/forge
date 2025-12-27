@@ -13,10 +13,6 @@ import { getWorktreeName, isValidWorktreePath } from "../utils/worktree";
 async function promptWorktreeSelection(): Promise<string> {
   const worktrees = await parseWorktreeList();
 
-  if (worktrees.length === 0) {
-    throw new Error("No worktrees available to switch to");
-  }
-
   // Format worktrees for inquirer
   const choices = worktrees.map((worktree) => {
     const worktreeName = getWorktreeName(worktree.path);
@@ -25,6 +21,12 @@ async function promptWorktreeSelection(): Promise<string> {
       name: `${worktreeName} ${branchInfo}`,
       value: worktree.path,
     };
+  });
+
+  // Add "Create a new worktree" option at the top
+  choices.unshift({
+    name: chalk.green("+ Create a new worktree"),
+    value: "__CREATE_NEW__",
   });
 
   console.log(chalk.bold("\n🛤️ Available worktrees:\n"));
@@ -39,6 +41,49 @@ async function promptWorktreeSelection(): Promise<string> {
       pageSize: 10,
     },
   ]);
+
+  // If user selected "Create a new worktree", prompt for details
+  if (answers.worktree === "__CREATE_NEW__") {
+    const newAnswers = await inquirer.prompt([
+      {
+        type: "input",
+        name: "path",
+        message: "Enter worktree path (e.g., ./my-feature):",
+        validate: (input: string) => {
+          if (!input || input.trim() === "") {
+            return "Path cannot be empty";
+          }
+          if (!isValidWorktreePath(input)) {
+            return "Invalid worktree path";
+          }
+          return true;
+        },
+      },
+      {
+        type: "input",
+        name: "branch",
+        message: "Enter branch name (optional, defaults to path):",
+        default: (answers: any) => {
+          const path = answers.path;
+          // Use the last part of the path as default branch name
+          return path.split("/").pop()?.replace(/^\.\//, "") || path;
+        },
+      },
+    ]);
+
+    const worktreePath = newAnswers.path;
+    const branchName = newAnswers.branch || newAnswers.path;
+
+    // Add worktree
+    const { exitCode, stderr } = await execGit(["worktree", "add", worktreePath, branchName]);
+
+    if (exitCode !== 0) {
+      throw new Error(`Failed to create worktree: ${stderr}`);
+    }
+
+    console.log(chalk.green(`🛤️ Created new worktree: ${chalk.cyan(worktreePath)}`));
+    return worktreePath;
+  }
 
   return answers.worktree;
 }
@@ -93,7 +138,7 @@ export async function switchWorktree(nameOrPath?: string, branch?: string): Prom
 /**
  * Switch to a worktree and print path (CLI mode)
  */
-export async function switchWorktreeCLI(nameOrPath?: string, branch?: string): Promise<void> {
+export async function switchWorktreeCLI(nameOrPath?: string, branch?: string, cdMode?: boolean): Promise<void> {
   try {
     const worktrees = await parseWorktreeList();
     const existing = nameOrPath
@@ -102,12 +147,19 @@ export async function switchWorktreeCLI(nameOrPath?: string, branch?: string): P
 
     const path = await switchWorktree(nameOrPath, branch);
 
+    if (cdMode) {
+      // In cd mode, output a cd command for use with eval
+      console.log(`cd "${path}"`);
+      return;
+    }
+
     if (existing || !nameOrPath) {
       console.log(chalk.green(`🛤️ Switched to worktree: ${chalk.cyan(path)}`));
     } else {
       console.log(chalk.green(`🛤️ Created and switched to worktree: ${chalk.cyan(path)}`));
     }
     console.log(chalk.dim(`\nTo change directory, run: ${chalk.bold(`cd ${path}`)}`));
+    console.log(chalk.dim(`Or auto-cd: ${chalk.bold(`eval "$(gityard switch --cd ${nameOrPath})`)}`));
   } catch (error: any) {
     console.error(chalk.red(`Error switching worktree: ${error.message}`));
     process.exit(1);
