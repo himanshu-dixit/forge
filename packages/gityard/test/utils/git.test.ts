@@ -3,18 +3,19 @@
  */
 
 import { describe, it, expect, mock } from "bun:test";
+import { createGitMock } from "../helpers/mocks";
 
 describe("execGit", () => {
   it("should execute git command successfully", async () => {
-    const mockExecGit = mock((_args: string[]) => 
+    const mockExecGit = mock((_args: string[]) =>
       Promise.resolve({ stdout: "git version 2.39.0", stderr: "", exitCode: 0 })
     );
 
-    mock.module("../../src/utils/git", () => ({
-      execGit: mockExecGit,
-      parseWorktreeList: mock((_args: string[]) => Promise.resolve([])),
-      getMainWorktreePath: mock((_args: string[]) => Promise.resolve("/path/to/repo")),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        execGit: mockExecGit,
+      })
+    );
 
     const { execGit: mockedExecGit } = await import("../../src/utils/git");
     const result = await mockedExecGit(["--version"]);
@@ -27,11 +28,11 @@ describe("execGit", () => {
       Promise.resolve({ stdout: "", stderr: "git: 'invalid-command' is not a git command", exitCode: 1 })
     );
 
-    mock.module("../../src/utils/git", () => ({
-      execGit: mockExecGit,
-      parseWorktreeList: mock((_args: string[]) => Promise.resolve([])),
-      getMainWorktreePath: mock((_args: string[]) => Promise.resolve("/path/to/repo")),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        execGit: mockExecGit,
+      })
+    );
 
     const { execGit: mockedExecGit } = await import("../../src/utils/git");
     const result = await mockedExecGit(["invalid-command"]);
@@ -46,11 +47,11 @@ describe("execGit", () => {
       return Promise.resolve({ stdout: "", stderr: "fatal: not a git repository", exitCode: 128 });
     });
 
-    mock.module("../../src/utils/git", () => ({
-      execGit: mockExecGit,
-      parseWorktreeList: mock((_args: string[]) => Promise.resolve([])),
-      getMainWorktreePath: mock((_args: string[]) => Promise.resolve("/path/to/repo")),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        execGit: mockExecGit,
+      })
+    );
 
     const { execGit: mockedExecGit } = await import("../../src/utils/git");
     await mockedExecGit(["rev-parse", "--git-dir"], "/non/existent/path");
@@ -74,11 +75,12 @@ describe("parseWorktreeList", () => {
       commit: "abc123def456789",
     }];
 
-    mock.module("../../src/utils/git", () => ({
-      execGit: mockExecGit,
-      parseWorktreeList: mock((_args: string[]) => Promise.resolve(mockWorktrees)),
-      getMainWorktreePath: mock((_args: string[]) => Promise.resolve("/path/to/repo")),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        execGit: mockExecGit,
+        parseWorktreeList: mock((_args: string[]) => Promise.resolve(mockWorktrees)),
+      })
+    );
 
     const { parseWorktreeList: mockedParseWorktreeList } = await import("../../src/utils/git");
     const worktrees = await mockedParseWorktreeList();
@@ -111,11 +113,12 @@ describe("parseWorktreeList", () => {
       },
     ];
 
-    mock.module("../../src/utils/git", () => ({
-      execGit: mockExecGit,
-      parseWorktreeList: mock((_args: string[]) => Promise.resolve(mockWorktrees)),
-      getMainWorktreePath: mock((_args: string[]) => Promise.resolve("/path/to/repo")),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        execGit: mockExecGit,
+        parseWorktreeList: mock((_args: string[]) => Promise.resolve(mockWorktrees)),
+      })
+    );
 
     const { parseWorktreeList: mockedParseWorktreeList } = await import("../../src/utils/git");
     const worktrees = await mockedParseWorktreeList();
@@ -142,11 +145,12 @@ describe("parseWorktreeList", () => {
       },
     ];
 
-    mock.module("../../src/utils/git", () => ({
-      execGit: mockExecGit,
-      parseWorktreeList: mock((_args: string[]) => Promise.resolve(mockWorktrees)),
-      getMainWorktreePath: mock((_args: string[]) => Promise.resolve("/path/to/repo")),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        execGit: mockExecGit,
+        parseWorktreeList: mock((_args: string[]) => Promise.resolve(mockWorktrees)),
+      })
+    );
 
     const { parseWorktreeList: mockedParseWorktreeList } = await import("../../src/utils/git");
     const worktrees = await mockedParseWorktreeList();
@@ -172,11 +176,12 @@ describe("parseWorktreeList", () => {
       },
     ];
 
-    mock.module("../../src/utils/git", () => ({
-      execGit: mockExecGit,
-      parseWorktreeList: mock((_args: string[]) => Promise.resolve(mockWorktrees)),
-      getMainWorktreePath: mock((_args: string[]) => Promise.resolve("/path/to/repo")),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        execGit: mockExecGit,
+        parseWorktreeList: mock((_args: string[]) => Promise.resolve(mockWorktrees)),
+      })
+    );
 
     const { parseWorktreeList: mockedParseWorktreeList } = await import("../../src/utils/git");
     const worktrees = await mockedParseWorktreeList();
@@ -190,11 +195,11 @@ describe("getMainWorktreePath", () => {
       Promise.resolve({ stdout: ".git", stderr: "", exitCode: 0 })
     );
 
-    mock.module("../../src/utils/git", () => ({
-      execGit: mockExecGit,
-      parseWorktreeList: mock((_args: string[]) => Promise.resolve([])),
-      getMainWorktreePath: mock((_args: string[]) => Promise.resolve("/path/to/repo")),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        execGit: mockExecGit,
+      })
+    );
 
     const { getMainWorktreePath: mockedGetMainWorktreePath } = await import("../../src/utils/git");
     const path = await mockedGetMainWorktreePath();

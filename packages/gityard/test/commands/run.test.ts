@@ -7,6 +7,7 @@ import { runScript } from "../../src/commands/run";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
+import { createGitMock } from "../helpers/mocks";
 
 describe("runScript", () => {
   let tempDir: string;
@@ -40,10 +41,11 @@ describe("runScript", () => {
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
     const mockGetScript = mock(() => Promise.resolve("echo 'test passed'"));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     mock.module("../../src/config", () => ({
       getScript: mockGetScript,
@@ -67,10 +69,11 @@ describe("runScript", () => {
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
     const mockGetScript = mock(() => Promise.resolve(["echo 'first'", "echo 'second'"]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     mock.module("../../src/config", () => ({
       getScript: mockGetScript,
@@ -84,10 +87,11 @@ describe("runScript", () => {
   it("should throw error when worktree not found", async () => {
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     await expect(runScript("non-existent", "test")).rejects.toThrow("Worktree not found: non-existent");
   });
@@ -113,10 +117,11 @@ describe("runScript", () => {
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
     const mockGetScript = mock(() => Promise.resolve(null));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     mock.module("../../src/config", () => ({
       getScript: mockGetScript,
@@ -140,10 +145,12 @@ describe("runScript", () => {
     const mockGetScript = mock(() => Promise.resolve("git status"));
     const mockExecGit = mock(() => Promise.resolve({ stdout: "On branch feature-branch", stderr: "", exitCode: 0 }));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mockExecGit,
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+      })
+    );
 
     mock.module("../../src/config", () => ({
       getScript: mockGetScript,
@@ -167,10 +174,11 @@ describe("runScript", () => {
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
     const mockGetScript = mock(() => Promise.resolve("false"));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     mock.module("../../src/config", () => ({
       getScript: mockGetScript,

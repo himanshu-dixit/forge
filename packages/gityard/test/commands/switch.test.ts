@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, mock } from "bun:test";
-import { switchWorktree } from "../../src/commands/switch";
 import inquirer from "inquirer";
+import { createGitMock } from "../helpers/mocks";
 
 describe("switchWorktree", () => {
   it("should return path when worktree exists", async () => {
@@ -17,17 +17,15 @@ describe("switchWorktree", () => {
       },
     ];
 
-    // Create a mock function that returns the test data
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
 
-    // Mock the git module
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-      branchExistsLocally: mock(() => Promise.resolve(false)),
-      branchExistsRemotely: mock(() => Promise.resolve(false)),
-      listBranches: mock(() => Promise.resolve({ local: [], remote: [] })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
+
+    const { switchWorktree } = await import("../../src/commands/switch");
 
     const path = await switchWorktree("worktree");
     expect(path).toBe("/path/to/worktree");
@@ -45,13 +43,13 @@ describe("switchWorktree", () => {
 
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-      branchExistsLocally: mock(() => Promise.resolve(false)),
-      branchExistsRemotely: mock(() => Promise.resolve(false)),
-      listBranches: mock(() => Promise.resolve({ local: [], remote: [] })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
+
+    const { switchWorktree } = await import("../../src/commands/switch");
 
     const path = await switchWorktree("/path/to/worktree");
     expect(path).toBe("/path/to/worktree");
@@ -61,13 +59,14 @@ describe("switchWorktree", () => {
     const mockExecGit = mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 }));
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mockExecGit,
-      branchExistsLocally: mock(() => Promise.resolve(false)),
-      branchExistsRemotely: mock(() => Promise.resolve(false)),
-      listBranches: mock(() => Promise.resolve({ local: [], remote: [] })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+      })
+    );
+
+    const { switchWorktree } = await import("../../src/commands/switch");
 
     const path = await switchWorktree("new-worktree", "feature-branch");
     expect(path).toBe("new-worktree");
@@ -83,13 +82,14 @@ describe("switchWorktree", () => {
 
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mockExecGit,
-      branchExistsLocally: mock(() => Promise.resolve(false)),
-      branchExistsRemotely: mock(() => Promise.resolve(false)),
-      listBranches: mock(() => Promise.resolve({ local: [], remote: [] })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+      })
+    );
+
+    const { switchWorktree } = await import("../../src/commands/switch");
 
     const path = await switchWorktree("new-worktree");
     expect(path).toBe("new-worktree");
@@ -99,13 +99,13 @@ describe("switchWorktree", () => {
   it("should throw error for invalid worktree path", async () => {
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-      branchExistsLocally: mock(() => Promise.resolve(false)),
-      branchExistsRemotely: mock(() => Promise.resolve(false)),
-      listBranches: mock(() => Promise.resolve({ local: [], remote: [] })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
+
+    const { switchWorktree } = await import("../../src/commands/switch");
 
     await expect(switchWorktree("../invalid-path")).rejects.toThrow("Invalid worktree path: ../invalid-path");
   });
@@ -114,13 +114,14 @@ describe("switchWorktree", () => {
     const mockExecGit = mock(() => Promise.resolve({ stdout: "", stderr: "fatal: branch 'non-existent' does not exist", exitCode: 128 }));
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mockExecGit,
-      branchExistsLocally: mock(() => Promise.resolve(false)),
-      branchExistsRemotely: mock(() => Promise.resolve(false)),
-      listBranches: mock(() => Promise.resolve({ local: [], remote: [] })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+      })
+    );
+
+    const { switchWorktree } = await import("../../src/commands/switch");
 
     await expect(switchWorktree("new-worktree", "non-existent")).rejects.toThrow("Branch 'non-existent' not found. Please check branch name."); // Updated error message format
   });
@@ -133,13 +134,14 @@ describe("switchWorktree", () => {
     });
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mockExecGit,
-      branchExistsLocally: mock(() => Promise.resolve(false)),
-      branchExistsRemotely: mock(() => Promise.resolve(false)),
-      listBranches: mock(() => Promise.resolve({ local: [], remote: [] })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+      })
+    );
+
+    const { switchWorktree } = await import("../../src/commands/switch");
 
     const path = await switchWorktree("./my-feature", "my-branch");
     expect(path).toBe("./my-feature");
@@ -156,13 +158,16 @@ describe("switchWorktree", () => {
 
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mockExecGit,
-      branchExistsLocally: mock(() => Promise.resolve(true)), // Branch exists locally
-      branchExistsRemotely: mock(() => Promise.resolve(false)),
-      listBranches: mock(() => Promise.resolve({ local: ["my-branch"], remote: [] })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+        branchExistsLocally: mock(() => Promise.resolve(true)), // Branch exists locally
+        listBranches: mock(() => Promise.resolve({ local: ["my-branch"], remote: [] })),
+      })
+    );
+
+    const { switchWorktree } = await import("../../src/commands/switch");
 
     const path = await switchWorktree("./my-feature", "my-branch");
     expect(path).toBe("./my-feature");
@@ -179,13 +184,16 @@ describe("switchWorktree", () => {
 
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mockExecGit,
-      branchExistsLocally: mock(() => Promise.resolve(false)),
-      branchExistsRemotely: mock(() => Promise.resolve(true)), // Branch exists remotely
-      listBranches: mock(() => Promise.resolve({ local: [], remote: ["my-branch"] })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+        branchExistsRemotely: mock(() => Promise.resolve(true)), // Branch exists remotely
+        listBranches: mock(() => Promise.resolve({ local: [], remote: ["my-branch"] })),
+      })
+    );
+
+    const { switchWorktree } = await import("../../src/commands/switch");
 
     const path = await switchWorktree("./my-feature", "my-branch");
     expect(path).toBe("./my-feature");

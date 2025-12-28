@@ -4,6 +4,7 @@
 
 import { describe, it, expect, mock } from "bun:test";
 import { rmWorktree } from "../../src/commands/rm";
+import { createGitMock } from "../helpers/mocks";
 
 describe("rmWorktree", () => {
   it("should remove worktree by path", async () => {
@@ -19,10 +20,12 @@ describe("rmWorktree", () => {
     const mockExecGit = mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 }));
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mockExecGit,
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+      })
+    );
 
     const success = await rmWorktree("/path/to/worktree");
     expect(success).toBe(true);
@@ -41,10 +44,12 @@ describe("rmWorktree", () => {
     const mockExecGit = mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 }));
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mockExecGit,
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+      })
+    );
 
     const success = await rmWorktree("feature");
     expect(success).toBe(true);
@@ -62,10 +67,11 @@ describe("rmWorktree", () => {
 
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     await expect(rmWorktree("non-existent")).rejects.toThrow("Worktree not found: non-existent");
   });
@@ -83,10 +89,12 @@ describe("rmWorktree", () => {
     const mockExecGit = mock(() => Promise.resolve({ stdout: "", stderr: "fatal: worktree has untracked files", exitCode: 1 }));
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mockExecGit,
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+      })
+    );
 
     await expect(rmWorktree("/path/to/worktree")).rejects.toThrow("Failed to remove worktree: fatal: worktree has untracked files");
   });
@@ -94,10 +102,11 @@ describe("rmWorktree", () => {
   it("should handle empty worktree list", async () => {
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     await expect(rmWorktree("any-worktree")).rejects.toThrow("Worktree not found: any-worktree");
   });

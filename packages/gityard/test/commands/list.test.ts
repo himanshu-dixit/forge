@@ -4,6 +4,7 @@
 
 import { describe, it, expect, mock } from "bun:test";
 import { listWorktrees } from "../../src/commands/list";
+import { createGitMock } from "../helpers/mocks";
 
 describe("listWorktrees", () => {
   it("should return array of worktrees", async () => {
@@ -24,10 +25,11 @@ describe("listWorktrees", () => {
 
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     const worktrees = await listWorktrees();
     expect(Array.isArray(worktrees)).toBe(true);
@@ -40,10 +42,11 @@ describe("listWorktrees", () => {
   it("should return empty array when no worktrees exist", async () => {
     const mockParseWorktreeList = mock(() => Promise.resolve([]));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     const worktrees = await listWorktrees();
     expect(worktrees).toEqual([]);
@@ -52,10 +55,11 @@ describe("listWorktrees", () => {
   it("should propagate errors from parseWorktreeList", async () => {
     const mockParseWorktreeList = mock(() => Promise.reject(new Error("Failed to list worktrees")));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     await expect(listWorktrees()).rejects.toThrow("Failed to list worktrees");
   });
@@ -72,10 +76,11 @@ describe("listWorktrees", () => {
 
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     const worktrees = await listWorktrees();
     expect(worktrees[0].isDetached).toBe(true);
@@ -94,10 +99,11 @@ describe("listWorktrees", () => {
 
     const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
 
-    mock.module("../../src/utils/git", () => ({
-      parseWorktreeList: mockParseWorktreeList,
-      execGit: mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 })),
-    }));
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+      })
+    );
 
     const worktrees = await listWorktrees();
     expect(worktrees[0].isBare).toBe(true);
