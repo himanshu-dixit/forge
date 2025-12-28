@@ -32,10 +32,19 @@ export async function execGit(
  * Format: <path> <commit> [<branch>]
  */
 export async function parseWorktreeList(): Promise<Worktree[]> {
-  const { stdout, exitCode } = await execGit(["worktree", "list", "--porcelain"]);
+  const { stdout, stderr, exitCode } = await execGit(["worktree", "list", "--porcelain"]);
 
   if (exitCode !== 0) {
-    throw new Error("Failed to list worktrees");
+    // Check if this is a "not a git repository" error
+    if (stderr.includes("not a git repository")) {
+      throw new Error("Not in a git repository. Please run this command inside a git repository.");
+    }
+    // Check if git is not installed or accessible
+    if (stderr.includes("command not found") || stderr.includes("not found")) {
+      throw new Error("Git is not installed or not accessible. Please install Git first.");
+    }
+    // Generic error with more context
+    throw new Error(`Failed to list worktrees: ${stderr || "Unknown error"}`);
   }
 
   const worktrees: Worktree[] = [];
@@ -95,4 +104,36 @@ export async function getMainWorktreePath(): Promise<string> {
     return gitDir.substring(0, gitDir.length - 4);
   }
   return process.cwd();
+}
+
+/**
+ * Check if a branch exists locally
+ */
+export async function branchExistsLocally(branchName: string): Promise<boolean> {
+  const { exitCode } = await execGit(["show-ref", "--verify", "--quiet", `refs/heads/${branchName}`]);
+  return exitCode === 0;
+}
+
+/**
+ * Check if a branch exists remotely
+ */
+export async function branchExistsRemotely(branchName: string): Promise<boolean> {
+  const { exitCode } = await execGit(["show-ref", "--verify", "--quiet", `refs/remotes/origin/${branchName}`]);
+  return exitCode === 0;
+}
+
+/**
+ * List all available branches (local and remote)
+ */
+export async function listBranches(): Promise<{ local: string[]; remote: string[] }> {
+  const localResult = await execGit(["branch", "--format=%(refname:short)"]);
+  const remoteResult = await execGit(["branch", "--remote", "--format=%(refname:short)"]);
+  
+  return {
+    local: localResult.stdout.split("\n").filter(b => b),
+    remote: remoteResult.stdout
+      .split("\n")
+      .filter(b => b)
+      .map(b => b.replace(/^origin\//, ""))
+  };
 }

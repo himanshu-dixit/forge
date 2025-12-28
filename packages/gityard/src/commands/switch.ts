@@ -4,8 +4,61 @@
 
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { parseWorktreeList, execGit } from "../utils/git";
+import { parseWorktreeList, execGit, branchExistsLocally, branchExistsRemotely, listBranches } from "../utils/git";
 import { getWorktreeName, isValidWorktreePath } from "../utils/worktree";
+import { existsSync } from "fs";
+
+/**
+ * Create a new worktree with smart branch handling
+ */
+async function createWorktree(path: string, branch: string): Promise<string> {
+  // Check if path already exists
+  if (existsSync(path)) {
+    throw new Error(`Path already exists: ${path}. Please choose a different path or remove the existing directory.`);
+  }
+
+  // Check if branch exists
+  const existsLocally = await branchExistsLocally(branch);
+  const existsRemotely = await branchExistsRemotely(branch);
+
+  if (existsLocally || existsRemotely) {
+    // Branch exists, use it directly
+    const branchRef = existsLocally ? branch : `origin/${branch}`;
+    console.log(chalk.blue(`Using existing branch: ${chalk.cyan(branch)}`));
+    const { exitCode, stderr } = await execGit(["worktree", "add", path, branchRef]);
+    
+    if (exitCode !== 0) {
+      // Check for common errors
+      if (stderr.includes("already contains a worktree")) {
+        throw new Error(`The path "${path}" is already part of a worktree. Use a different path.`);
+      }
+      if (stderr.includes("no such ref")) {
+        throw new Error(`Branch "${branch}" not found. Please check the branch name.`);
+      }
+      throw new Error(`Failed to create worktree: ${stderr}`);
+    }
+  } else {
+    // Branch doesn't exist, create new branch
+    console.log(chalk.blue(`Creating new branch: ${chalk.cyan(branch)}`));
+    const { exitCode, stderr } = await execGit(["worktree", "add", "-b", branch, path]);
+    
+    if (exitCode !== 0) {
+      // Check for common errors
+      if (stderr.includes("already contains a worktree")) {
+        throw new Error(`The path "${path}" is already part of a worktree. Use a different path.`);
+      }
+      if (stderr.includes("invalid branch name")) {
+        throw new Error(`Invalid branch name: "${branch}". Please use a valid branch name.`);
+      }
+      if (stderr.includes("no such ref") || stderr.includes("does not exist")) {
+        throw new Error(`Branch '${branch}' not found. Please check branch name.`);
+      }
+      throw new Error(`Failed to create worktree and branch: ${stderr}`);
+    }
+  }
+
+  return path;
+}
 
 /**
  * Interactive prompt to select a worktree
@@ -74,12 +127,8 @@ async function promptWorktreeSelection(): Promise<string> {
     const worktreePath = newAnswers.path;
     const branchName = newAnswers.branch || newAnswers.path;
 
-    // Add worktree
-    const { exitCode, stderr } = await execGit(["worktree", "add", worktreePath, branchName]);
-
-    if (exitCode !== 0) {
-      throw new Error(`Failed to create worktree: ${stderr}`);
-    }
+    // Create worktree using smart branch handling
+    await createWorktree(worktreePath, branchName);
 
     console.log(chalk.green(`🛤️ Created new worktree: ${chalk.cyan(worktreePath)}`));
     return worktreePath;
@@ -125,12 +174,8 @@ export async function switchWorktree(nameOrPath?: string, branch?: string): Prom
     throw new Error(`Invalid worktree path: ${worktreePath}`);
   }
 
-  // Add worktree
-  const { exitCode, stderr } = await execGit(["worktree", "add", worktreePath, branchName]);
-
-  if (exitCode !== 0) {
-    throw new Error(`Failed to create worktree: ${stderr}`);
-  }
+  // Create worktree using smart branch handling
+  await createWorktree(worktreePath, branchName);
 
   return worktreePath;
 }
