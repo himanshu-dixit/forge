@@ -1,6 +1,6 @@
 {
   "name": "gityard",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "CLI and ESM module for managing Git worktrees with ease.",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "dev": "bun src/cli.tsx",
-    "build": "bun build src/cli.tsx --outdir dist --target bun --external react-devtools-core && bun build src/index.ts --outdir dist --target bun --external react-devtools-core && cp package.json dist/package.json",
+    "build": "bun build src/cli.tsx --outdir dist --target bun && bun build src/index.ts --outdir dist --target bun && cp package.json dist/package.json",
     "test": "bun test",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "oxlint": "^1.35.0"
+    "oxlint": "^1.35.0",
+    "react-devtools-core": "^7.0.1"
   }
 }
