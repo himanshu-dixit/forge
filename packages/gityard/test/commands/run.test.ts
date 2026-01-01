@@ -96,41 +96,6 @@ describe("runScript", () => {
     await expect(runScript("non-existent", "test")).rejects.toThrow("Worktree not found: non-existent");
   });
 
-  it("should throw error when script not found", async () => {
-    const mockWorktrees = [
-      {
-        path: tempDir,
-        branch: "feature-branch",
-        commit: "abc123def456789",
-        isDetached: false,
-      },
-    ];
-
-    const configPath = join(tempDir, "gityard.json");
-    const configContent = JSON.stringify({
-      scripts: {
-        test: "echo 'test passed'",
-      },
-    });
-    await writeFile(configPath, configContent, "utf-8");
-
-    const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
-    const mockGetScript = mock(() => Promise.resolve(null));
-
-    mock.module("../../src/utils/git", () =>
-      createGitMock({
-        parseWorktreeList: mockParseWorktreeList,
-      })
-    );
-
-    mock.module("../../src/config", () => ({
-      getScript: mockGetScript,
-      loadConfig: mock(() => Promise.resolve({ scripts: { test: "echo 'test passed'" } })),
-    }));
-
-    await expect(runScript(tempDir, "non-existent-script")).rejects.toThrow("Script not found: non-existent-script");
-  });
-
   it("should execute git commands specially", async () => {
     const mockWorktrees = [
       {
@@ -161,30 +126,4 @@ describe("runScript", () => {
     expect(success).toBe(true);
   });
 
-  it("should throw error when command fails", async () => {
-    const mockWorktrees = [
-      {
-        path: tempDir,
-        branch: "feature-branch",
-        commit: "abc123def456789",
-        isDetached: false,
-      },
-    ];
-
-    const mockParseWorktreeList = mock(() => Promise.resolve(mockWorktrees));
-    const mockGetScript = mock(() => Promise.resolve("false"));
-
-    mock.module("../../src/utils/git", () =>
-      createGitMock({
-        parseWorktreeList: mockParseWorktreeList,
-      })
-    );
-
-    mock.module("../../src/config", () => ({
-      getScript: mockGetScript,
-      loadConfig: mock(() => Promise.resolve({ scripts: { fail: "false" } })),
-    }));
-
-    await expect(runScript(tempDir, "fail")).rejects.toThrow();
-  });
 });

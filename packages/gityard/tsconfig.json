@@ -3,6 +3,7 @@
     "target": "ESNext",
     "module": "ESNext",
     "lib": ["ESNext", "DOM"],
+    "jsx": "react",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "noEmit": true,

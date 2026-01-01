@@ -12,6 +12,10 @@ export interface Worktree {
 
 export interface gityardConfig {
   scripts: Record<string, string | string[]>;
+  hooks?: {
+    onCreate?: string | string[];
+    onRemove?: string | string[];
+  };
   gitforge?: string;
 }
 

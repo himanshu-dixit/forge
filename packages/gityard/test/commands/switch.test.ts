@@ -3,7 +3,6 @@
  */
 
 import { describe, it, expect, mock } from "bun:test";
-import inquirer from "inquirer";
 import { createGitMock } from "../helpers/mocks";
 
 describe("switchWorktree", () => {
@@ -25,10 +24,16 @@ describe("switchWorktree", () => {
       })
     );
 
+    mock.module("../../src/config", () => ({
+      loadConfig: mock(() => Promise.resolve(null)),
+      getScript: mock(() => Promise.resolve(null)),
+    }));
+
     const { switchWorktree } = await import("../../src/commands/switch");
 
-    const path = await switchWorktree("worktree");
-    expect(path).toBe("/path/to/worktree");
+    const result = await switchWorktree("worktree");
+    expect(result.path).toBe("/path/to/worktree");
+    expect(result.created).toBe(false);
   });
 
   it("should return path when worktree exists by full path", async () => {
@@ -49,10 +54,16 @@ describe("switchWorktree", () => {
       })
     );
 
+    mock.module("../../src/config", () => ({
+      loadConfig: mock(() => Promise.resolve(null)),
+      getScript: mock(() => Promise.resolve(null)),
+    }));
+
     const { switchWorktree } = await import("../../src/commands/switch");
 
-    const path = await switchWorktree("/path/to/worktree");
-    expect(path).toBe("/path/to/worktree");
+    const result = await switchWorktree("/path/to/worktree");
+    expect(result.path).toBe("/path/to/worktree");
+    expect(result.created).toBe(false);
   });
 
   it("should create worktree when it doesn't exist", async () => {
@@ -66,10 +77,16 @@ describe("switchWorktree", () => {
       })
     );
 
+    mock.module("../../src/config", () => ({
+      loadConfig: mock(() => Promise.resolve(null)),
+      getScript: mock(() => Promise.resolve(null)),
+    }));
+
     const { switchWorktree } = await import("../../src/commands/switch");
 
-    const path = await switchWorktree("new-worktree", "feature-branch");
-    expect(path).toBe("new-worktree");
+    const result = await switchWorktree("new-worktree", "feature-branch");
+    expect(result.path).toBe("new-worktree");
+    expect(result.created).toBe(true);
   });
 
   it("should use nameOrPath as branch when branch not provided", async () => {
@@ -89,10 +106,16 @@ describe("switchWorktree", () => {
       })
     );
 
+    mock.module("../../src/config", () => ({
+      loadConfig: mock(() => Promise.resolve(null)),
+      getScript: mock(() => Promise.resolve(null)),
+    }));
+
     const { switchWorktree } = await import("../../src/commands/switch");
 
-    const path = await switchWorktree("new-worktree");
-    expect(path).toBe("new-worktree");
+    const result = await switchWorktree("new-worktree");
+    expect(result.path).toBe("new-worktree");
+    expect(result.created).toBe(true);
     expect(capturedArgs).toEqual(["worktree", "add", "-b", "new-worktree", "new-worktree"]); // Creates new branch since it doesn't exist
   });
 
@@ -104,6 +127,11 @@ describe("switchWorktree", () => {
         parseWorktreeList: mockParseWorktreeList,
       })
     );
+
+    mock.module("../../src/config", () => ({
+      loadConfig: mock(() => Promise.resolve(null)),
+      getScript: mock(() => Promise.resolve(null)),
+    }));
 
     const { switchWorktree } = await import("../../src/commands/switch");
 
@@ -120,6 +148,11 @@ describe("switchWorktree", () => {
         execGit: mockExecGit,
       })
     );
+
+    mock.module("../../src/config", () => ({
+      loadConfig: mock(() => Promise.resolve(null)),
+      getScript: mock(() => Promise.resolve(null)),
+    }));
 
     const { switchWorktree } = await import("../../src/commands/switch");
 
@@ -141,10 +174,16 @@ describe("switchWorktree", () => {
       })
     );
 
+    mock.module("../../src/config", () => ({
+      loadConfig: mock(() => Promise.resolve(null)),
+      getScript: mock(() => Promise.resolve(null)),
+    }));
+
     const { switchWorktree } = await import("../../src/commands/switch");
 
-    const path = await switchWorktree("./my-feature", "my-branch");
-    expect(path).toBe("./my-feature");
+    const result = await switchWorktree("./my-feature", "my-branch");
+    expect(result.path).toBe("./my-feature");
+    expect(result.created).toBe(true);
     expect(capturedArgs).toEqual(["worktree", "add", "-b", "my-branch", "./my-feature"]);
   });
 
@@ -167,10 +206,16 @@ describe("switchWorktree", () => {
       })
     );
 
+    mock.module("../../src/config", () => ({
+      loadConfig: mock(() => Promise.resolve(null)),
+      getScript: mock(() => Promise.resolve(null)),
+    }));
+
     const { switchWorktree } = await import("../../src/commands/switch");
 
-    const path = await switchWorktree("./my-feature", "my-branch");
-    expect(path).toBe("./my-feature");
+    const result = await switchWorktree("./my-feature", "my-branch");
+    expect(result.path).toBe("./my-feature");
+    expect(result.created).toBe(true);
     expect(capturedArgs).toEqual(["worktree", "add", "./my-feature", "my-branch"]); // Uses existing branch without -b flag
   });
 
@@ -193,11 +238,49 @@ describe("switchWorktree", () => {
       })
     );
 
+    mock.module("../../src/config", () => ({
+      loadConfig: mock(() => Promise.resolve(null)),
+    }));
+
     const { switchWorktree } = await import("../../src/commands/switch");
 
-    const path = await switchWorktree("./my-feature", "my-branch");
-    expect(path).toBe("./my-feature");
+    const result = await switchWorktree("./my-feature", "my-branch");
+    expect(result.path).toBe("./my-feature");
+    expect(result.created).toBe(true);
     expect(capturedArgs).toEqual(["worktree", "add", "./my-feature", "origin/my-branch"]); // Uses remote branch
+  });
+
+  it("should run onCreate hook when worktree is created", async () => {
+    const mockExecGit = mock(() => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 }));
+    const mockParseWorktreeList = mock(() => Promise.resolve([]));
+    const mockRunScriptByName = mock(() => Promise.resolve(true));
+
+    mock.module("../../src/utils/git", () =>
+      createGitMock({
+        parseWorktreeList: mockParseWorktreeList,
+        execGit: mockExecGit,
+      })
+    );
+
+    mock.module("../../src/config", () => ({
+      loadConfig: mock(() =>
+        Promise.resolve({
+          scripts: { init: "echo init" },
+          hooks: { onCreate: "init" },
+        })
+      ),
+      getScript: mock(() => Promise.resolve(null)),
+    }));
+
+    mock.module("../../src/commands/run", () => ({
+      runScriptByName: mockRunScriptByName,
+    }));
+
+    const { switchWorktree } = await import("../../src/commands/switch");
+
+    const result = await switchWorktree("new-worktree");
+    expect(result.created).toBe(true);
+    expect(mockRunScriptByName).toHaveBeenCalledWith("new-worktree", "init", "/path/to/repo");
   });
 
 });

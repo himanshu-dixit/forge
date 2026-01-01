@@ -4,9 +4,31 @@
 
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { parseWorktreeList, execGit, branchExistsLocally, branchExistsRemotely, listBranches, getMainWorktreePath } from "../utils/git";
+import { parseWorktreeList, execGit, branchExistsLocally, branchExistsRemotely, getMainWorktreePath } from "../utils/git";
 import { getWorktreeName, isValidWorktreePath } from "../utils/worktree";
 import { existsSync } from "fs";
+import { loadConfig } from "../config";
+import { runScriptByName } from "./run";
+
+type SwitchResult = {
+  path: string;
+  created: boolean;
+};
+
+async function runHookScripts(
+  hookScripts: string | string[] | undefined,
+  worktreePath: string,
+  repoRoot: string
+): Promise<void> {
+  if (!hookScripts) {
+    return;
+  }
+
+  const scripts = Array.isArray(hookScripts) ? hookScripts : [hookScripts];
+  for (const scriptName of scripts) {
+    await runScriptByName(worktreePath, scriptName, repoRoot);
+  }
+}
 
 /**
  * Create a new worktree with smart branch handling
@@ -63,7 +85,7 @@ async function createWorktree(path: string, branch: string): Promise<string> {
 /**
  * Interactive prompt to select a worktree
  */
-async function promptWorktreeSelection(): Promise<string> {
+async function promptWorktreeSelection(): Promise<SwitchResult> {
   const repoRoot = await getMainWorktreePath();
   const worktrees = await parseWorktreeList(repoRoot);
 
@@ -132,10 +154,10 @@ async function promptWorktreeSelection(): Promise<string> {
     await createWorktree(worktreePath, branchName);
 
     console.log(chalk.green(`🛤️ Created new worktree: ${chalk.cyan(worktreePath)}`));
-    return worktreePath;
+    return { path: worktreePath, created: true };
   }
 
-  return answers.worktree;
+  return { path: answers.worktree, created: false };
 }
 
 /**
@@ -144,13 +166,18 @@ async function promptWorktreeSelection(): Promise<string> {
  * @param branch Optional branch name (if creating new worktree)
  * @returns Worktree path
  */
-export async function switchWorktree(nameOrPath?: string, branch?: string): Promise<string> {
+export async function switchWorktree(nameOrPath?: string, branch?: string): Promise<SwitchResult> {
   const repoRoot = await getMainWorktreePath();
   const worktrees = await parseWorktreeList(repoRoot);
 
   // If no nameOrPath provided, prompt for selection
   if (!nameOrPath) {
-    return await promptWorktreeSelection();
+    const result = await promptWorktreeSelection();
+    if (result.created) {
+      const config = await loadConfig(repoRoot);
+      await runHookScripts(config?.hooks?.onCreate, result.path, repoRoot);
+    }
+    return result;
   }
 
   // If nameOrPath is empty string, throw error
@@ -164,7 +191,7 @@ export async function switchWorktree(nameOrPath?: string, branch?: string): Prom
   );
 
   if (worktree) {
-    return worktree.path;
+    return { path: worktree.path, created: false };
   }
 
   // Worktree doesn't exist - create it
@@ -179,7 +206,10 @@ export async function switchWorktree(nameOrPath?: string, branch?: string): Prom
   // Create worktree using smart branch handling
   await createWorktree(worktreePath, branchName);
 
-  return worktreePath;
+  const config = await loadConfig(repoRoot);
+  await runHookScripts(config?.hooks?.onCreate, worktreePath, repoRoot);
+
+  return { path: worktreePath, created: true };
 }
 
 /**
@@ -193,7 +223,8 @@ export async function switchWorktreeCLI(nameOrPath?: string, branch?: string, cd
       ? worktrees.find((wt) => wt.path === nameOrPath || getWorktreeName(wt.path) === nameOrPath)
       : null;
 
-    const path = await switchWorktree(nameOrPath, branch);
+    const result = await switchWorktree(nameOrPath, branch);
+    const path = result.path;
 
     if (cdMode) {
       // In cd mode, output a cd command for use with eval
@@ -201,7 +232,7 @@ export async function switchWorktreeCLI(nameOrPath?: string, branch?: string, cd
       return;
     }
 
-    if (existing || !nameOrPath) {
+    if (existing || !result.created) {
       console.log(chalk.green(`🛤️ Switched to worktree: ${chalk.cyan(path)}`));
     } else {
       console.log(chalk.green(`🛤️ Created and switched to worktree: ${chalk.cyan(path)}`));

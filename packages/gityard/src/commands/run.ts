@@ -29,8 +29,16 @@ export async function runScript(
     throw new Error(`Worktree not found: ${worktreeName}`);
   }
 
+  return runScriptByName(worktree.path, scriptName, worktree.path);
+}
+
+export async function runScriptByName(
+  worktreePath: string,
+  scriptName: string,
+  configCwd?: string
+): Promise<boolean> {
   // Load script from config
-  const script = await getScript(scriptName, worktree.path);
+  const script = await getScript(scriptName, configCwd || worktreePath);
 
   if (!script) {
     throw new Error(`Script not found: ${scriptName}`);
@@ -47,14 +55,14 @@ export async function runScript(
 
     if (command === "git") {
       // Execute git command
-      const { exitCode, stderr } = await execGit(args, worktree.path);
+      const { exitCode, stderr } = await execGit(args, worktreePath);
       if (exitCode !== 0) {
         throw new Error(`Script execution failed: ${stderr}`);
       }
     } else {
       // Execute shell command using shell
       const proc = Bun.spawn([command, ...args], {
-        cwd: worktree.path,
+        cwd: worktreePath,
         stdout: "inherit",
         stderr: "inherit",
         shell: true,

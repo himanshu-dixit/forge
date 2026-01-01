@@ -95,8 +95,6 @@ packages/gityard/
 │   ├── config.ts                 # Configuration file parser
 │   ├── commands/                 # Command implementations
 │   │   ├── init.ts              # Initialize gityard.json
-│   │   ├── list.ts              # List worktrees
-│   │   ├── rm.ts                # Remove worktree
 │   │   ├── switch.ts            # Switch/create worktree
 │   │   └── run.ts               # Run script in worktree
 │   └── utils/                    # Utility functions
@@ -118,7 +116,6 @@ packages/gityard/
 | `src/config.ts` | Functions to load and parse `gityard.json` |
 | `src/commands/init.ts` | Initialize gityard configuration |
 | `src/commands/list.ts` | List and display all worktrees |
-| `src/commands/rm.ts` | Remove a worktree |
 | `src/commands/switch.ts` | Switch to or create worktree |
 | `src/commands/run.ts` | Execute script in specific worktree |
 | `src/utils/git.ts` | Git command execution and worktree parsing |
@@ -523,7 +520,7 @@ The project uses GitHub Actions for automated releases. See `.github/workflows/r
 
 #### 2. Worktree Not Found
 
-**Problem**: `gityard switch` or `gityard rm` can't find worktree
+**Problem**: `gityard switch` can't find worktree
 
 **Solution**:
 - Use `gityard list` to see available worktrees

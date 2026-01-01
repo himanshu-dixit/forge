@@ -2,11 +2,12 @@
  * ESM module exports for gityard
  */
 
-export { listWorktrees } from "./commands/list";
-export { rmWorktree } from "./commands/rm";
+export { rmWorktree } from "./utils/worktree-rm";
 export { switchWorktree } from "./commands/switch";
 export { runScript } from "./commands/run";
 export { initgityard } from "./commands/init";
+export { mergeWorktree } from "./commands/merge";
+export { deleteWorktreeBranch } from "./commands/delete";
 
 export type { Worktree, gityardConfig, CLIOptions } from "./types";
 

@@ -133,16 +133,16 @@ export async function getMainWorktreePath(cwd?: string): Promise<string> {
 /**
  * Check if a branch exists locally
  */
-export async function branchExistsLocally(branchName: string): Promise<boolean> {
-  const { exitCode } = await execGit(["show-ref", "--verify", "--quiet", `refs/heads/${branchName}`]);
+export async function branchExistsLocally(branchName: string, cwd?: string): Promise<boolean> {
+  const { exitCode } = await execGit(["show-ref", "--verify", "--quiet", `refs/heads/${branchName}`], cwd);
   return exitCode === 0;
 }
 
 /**
  * Check if a branch exists remotely
  */
-export async function branchExistsRemotely(branchName: string): Promise<boolean> {
-  const { exitCode } = await execGit(["show-ref", "--verify", "--quiet", `refs/remotes/origin/${branchName}`]);
+export async function branchExistsRemotely(branchName: string, cwd?: string): Promise<boolean> {
+  const { exitCode } = await execGit(["show-ref", "--verify", "--quiet", `refs/remotes/origin/${branchName}`], cwd);
   return exitCode === 0;
 }
 
@@ -160,4 +160,119 @@ export async function listBranches(): Promise<{ local: string[]; remote: string[
       .filter(b => b)
       .map(b => b.replace(/^origin\//, ""))
   };
+}
+
+export async function getCurrentBranch(cwd?: string): Promise<string> {
+  const { stdout, exitCode, stderr } = await execGit(["rev-parse", "--abbrev-ref", "HEAD"], cwd);
+  if (exitCode !== 0) {
+    throw new Error(`Failed to determine current branch: ${stderr || "Unknown error"}`);
+  }
+  return stdout.trim();
+}
+
+export async function getWorktreeStatus(
+  cwd?: string
+): Promise<{ staged: number; unstaged: number; untracked: number }> {
+  const { stdout, exitCode, stderr } = await execGit(["status", "--porcelain"], cwd);
+  if (exitCode !== 0) {
+    throw new Error(`Failed to read worktree status: ${stderr || "Unknown error"}`);
+  }
+  const lines = stdout ? stdout.split("\n").filter(Boolean) : [];
+  let staged = 0;
+  let unstaged = 0;
+  let untracked = 0;
+  for (const line of lines) {
+    if (line.startsWith("??")) {
+      untracked += 1;
+      continue;
+    }
+    const stagedFlag = line[0];
+    const unstagedFlag = line[1];
+    if (stagedFlag && stagedFlag !== " ") {
+      staged += 1;
+    }
+    if (unstagedFlag && unstagedFlag !== " ") {
+      unstaged += 1;
+    }
+  }
+  return { staged, unstaged, untracked };
+}
+
+function sumNumstat(lines: string[]): { added: number; deleted: number } {
+  let added = 0;
+  let deleted = 0;
+  for (const line of lines) {
+    const [addRaw, delRaw] = line.split("\t");
+    const add = Number(addRaw);
+    const del = Number(delRaw);
+    if (Number.isFinite(add)) {
+      added += add;
+    }
+    if (Number.isFinite(del)) {
+      deleted += del;
+    }
+  }
+  return { added, deleted };
+}
+
+export async function getWorktreeDiffStats(cwd?: string): Promise<{ added: number; deleted: number }> {
+  const [unstaged, staged] = await Promise.all([
+    execGit(["diff", "--numstat"], cwd),
+    execGit(["diff", "--numstat", "--cached"], cwd),
+  ]);
+
+  if (unstaged.exitCode !== 0) {
+    throw new Error(`Failed to read unstaged diff stats: ${unstaged.stderr || "Unknown error"}`);
+  }
+  if (staged.exitCode !== 0) {
+    throw new Error(`Failed to read staged diff stats: ${staged.stderr || "Unknown error"}`);
+  }
+
+  const unstagedLines = unstaged.stdout ? unstaged.stdout.split("\n").filter(Boolean) : [];
+  const stagedLines = staged.stdout ? staged.stdout.split("\n").filter(Boolean) : [];
+  const a = sumNumstat(unstagedLines);
+  const b = sumNumstat(stagedLines);
+  return { added: a.added + b.added, deleted: a.deleted + b.deleted };
+}
+
+export async function getLastCommitInfo(
+  cwd?: string
+): Promise<{ timestamp: number; relative: string }> {
+  const { stdout, exitCode, stderr } = await execGit(["log", "-1", "--format=%ct|%cr"], cwd);
+  if (exitCode !== 0) {
+    throw new Error(`Failed to read last commit: ${stderr || "Unknown error"}`);
+  }
+  const [timestampRaw, relative] = stdout.split("|");
+  const timestamp = Number(timestampRaw);
+  return { timestamp: Number.isFinite(timestamp) ? timestamp : 0, relative: relative?.trim() || "-" };
+}
+
+export async function getAheadBehind(
+  baseBranch: string,
+  cwd?: string
+): Promise<{ ahead: number; behind: number }> {
+  const { stdout, exitCode, stderr } = await execGit(
+    ["rev-list", "--left-right", "--count", `${baseBranch}...HEAD`],
+    cwd
+  );
+  if (exitCode !== 0) {
+    throw new Error(`Failed to read ahead/behind: ${stderr || "Unknown error"}`);
+  }
+  const [behindRaw, aheadRaw] = stdout.split(/\s+/);
+  const behind = Number(behindRaw);
+  const ahead = Number(aheadRaw);
+  return {
+    ahead: Number.isFinite(ahead) ? ahead : 0,
+    behind: Number.isFinite(behind) ? behind : 0,
+  };
+}
+
+export async function resolveBaseBranch(preferred: string, cwd?: string): Promise<string | null> {
+  if (await branchExistsLocally(preferred, cwd)) {
+    return preferred;
+  }
+  if (preferred !== "main" && (await branchExistsLocally("main", cwd))) {
+    return "main";
+  }
+  return null;
 }

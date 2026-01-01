@@ -46,16 +46,6 @@ Output:
   /path/to/repo/feature feature-branch [def5678]
 ```
 
-### Remove Worktree
-
-Remove a worktree by name or path:
-
-```bash
-gityard rm feature-branch
-# or
-gityard rm /path/to/repo/feature
-```
-
 ### Switch Worktree
 
 Switch to a worktree by name or path. If the worktree doesn't exist, it will be created:
@@ -74,7 +64,15 @@ gityard switch ./feature feature-branch
 eval "$(gityard switch --cd feature-branch)"
 ```
 
+Running `gityard` with no command defaults to `switch` and opens the worktree picker.
+
 If the worktree doesn't exist and no branch is specified, the worktree name will be used as the branch name.
+
+Auto-cd requires `eval` so the parent shell can change directories:
+
+```bash
+eval "$(gityard switch --cd feature-branch)"
+```
 
 The `--cd` flag outputs a `cd` command, making it easy to use with `eval` to automatically change to the worktree directory. This works in shells like bash, zsh, and fish.
 
@@ -84,6 +82,16 @@ Execute a script from `gityard.json` in a specific worktree:
 
 ```bash
 gityard run feature-branch test
+```
+
+### Merge Worktree
+
+Merge a worktree branch into `master` from the base worktree:
+
+```bash
+gityard merge feature-branch --squash
+# or
+gityard merge feature-branch --no-ff
 ```
 
 ## Configuration
@@ -111,6 +119,21 @@ Scripts can be:
 - A single command string
 - An array of commands (executed sequentially)
 
+Hooks (optional) let you run script names automatically on worktree creation/removal:
+
+```json
+{
+  "scripts": {
+    "init": "bun run init",
+    "kill": "bun run kill"
+  },
+  "hooks": {
+    "onCreate": "init",
+    "onRemove": "kill"
+  }
+}
+```
+
 ## ESM Module Usage
 
 Import and use gityard programmatically:
@@ -135,9 +158,10 @@ console.log(worktrees);
 await rmWorktree("feature-branch");
 
 // Switch to a worktree (creates it if it doesn't exist)
-const path = await switchWorktree("feature-branch");
+const result = await switchWorktree("feature-branch");
 // Or create new worktree with specific branch
-const newPath = await switchWorktree("./new-feature", "new-feature");
+const newResult = await switchWorktree("./new-feature", "new-feature");
+console.log(result.path, result.created);
 
 // Run a script
 await runScript("feature-branch", "test");
@@ -156,6 +180,10 @@ interface Worktree {
 
 interface gityardConfig {
   scripts: Record<string, string | string[]>;
+  hooks?: {
+    onCreate?: string | string[];
+    onRemove?: string | string[];
+  };
 }
 ```
 
@@ -165,10 +193,10 @@ interface gityardConfig {
 |---------|-------------|
 | `init` | Initialize git-garden configuration (creates gityard.json) |
 | `list` | List all worktrees |
-| `rm <name>` | Remove a worktree by name or path |
 | `switch <name> [branch]` | Switch to a worktree by name or path (creates it if it doesn't exist) |
 | `switch <name> [branch] --cd` | Switch to worktree and output path for easy cd (use with: `cd $(gityard switch --cd <name)`) |
 | `run <worktree> <script>` | Run a script from gityard.json in a worktree |
+| `merge <worktree> --squash|--no-ff` | Merge a worktree branch into master from the base worktree |
 
 ## Examples
 
@@ -193,9 +221,6 @@ cd $(gityard switch --cd my-feature)
 
 # Run tests in a specific worktree
 gityard run my-feature test
-
-# Remove a worktree
-gityard rm my-feature
 ```
 
 ### Using with npm scripts

@@ -20,6 +20,9 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<gityardCo
     if (!config.scripts || typeof config.scripts !== "object") {
       throw new Error("Invalid gityard.json: missing or invalid 'scripts' field");
     }
+    if (config.hooks && typeof config.hooks !== "object") {
+      throw new Error("Invalid gityard.json: 'hooks' must be an object");
+    }
 
     return config;
   } catch (error: any) {
