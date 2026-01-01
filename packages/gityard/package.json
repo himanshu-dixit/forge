@@ -12,7 +12,7 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "bun run src/cli.ts",
+    "dev": "bun src/cli.ts",
     "build": "bun build src/cli.ts --outdir dist --target bun && bun build src/index.ts --outdir dist --target bun",
     "test": "bun test",
     "lint": "oxlint",
@@ -21,7 +21,8 @@
     "release:patch": "bunx standard-version --release-as patch",
     "release:minor": "bunx standard-version --release-as minor",
     "release:major": "bunx standard-version --release-as major",
-    "release:rc": "bunx standard-version --prerelease rc"
+    "release:rc": "bunx standard-version --prerelease rc",
+    "gityard": "bun src/cli.ts"
   },
   "keywords": [
     "git",

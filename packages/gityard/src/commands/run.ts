@@ -3,7 +3,7 @@
  */
 
 import chalk from "chalk";
-import { parseWorktreeList } from "../utils/git";
+import { parseWorktreeList, getMainWorktreePath } from "../utils/git";
 import { getWorktreeName } from "../utils/worktree";
 import { getScript } from "../config";
 import { execGit } from "../utils/git";
@@ -19,7 +19,8 @@ export async function runScript(
   scriptName: string
 ): Promise<boolean> {
   // Find worktree
-  const worktrees = await parseWorktreeList();
+  const repoRoot = await getMainWorktreePath();
+  const worktrees = await parseWorktreeList(repoRoot);
   const worktree = worktrees.find(
     (wt) => wt.path === worktreeName || getWorktreeName(wt.path) === worktreeName
   );

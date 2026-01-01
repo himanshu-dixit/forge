@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Local gityard runner - mimics npx behavior for testing
+# Usage: ./gityard-local [command] [args...]
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Change to the gityard package directory and run the CLI
+cd "$SCRIPT_DIR" && bun src/cli.ts "$@"

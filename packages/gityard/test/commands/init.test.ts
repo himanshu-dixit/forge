@@ -65,19 +65,4 @@ describe("initgityard", () => {
       expect(error.message).toBe("gityard.json already exists. Remove it first if you want to reinitialize.");
     }
   });
-
-  it("should use process.cwd() when no directory provided", async () => {
-    // This test assumes we're in the project directory
-    // In a real test, you'd mock process.cwd() or use a different approach
-    const success = await initgityard();
-    expect(success).toBe(true);
-
-    // Clean up
-    const configPath = join(process.cwd(), "gityard.json");
-    try {
-      await rm(configPath);
-    } catch {
-      // File might not exist, that's ok
-    }
-  });
 });

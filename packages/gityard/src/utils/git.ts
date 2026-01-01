@@ -30,14 +30,15 @@ export async function execGit(
 /**
  * Parse git worktree list output
  * Format: <path> <commit> [<branch>]
+ * @param cwd Optional working directory (repository root). If not provided, uses process.cwd()
  */
-export async function parseWorktreeList(): Promise<Worktree[]> {
-  const { stdout, stderr, exitCode } = await execGit(["worktree", "list", "--porcelain"]);
+export async function parseWorktreeList(cwd?: string): Promise<Worktree[]> {
+  const { stdout, stderr, exitCode } = await execGit(["worktree", "list", "--porcelain"], cwd);
 
   if (exitCode !== 0) {
     // Check if this is a "not a git repository" error
     if (stderr.includes("not a git repository")) {
-      throw new Error("Not in a git repository. Please run this command inside a git repository.");
+      throw new Error(`Not a git repository: ${cwd || process.cwd()}`);
     }
     // Check if git is not installed or accessible
     if (stderr.includes("command not found") || stderr.includes("not found")) {
@@ -52,30 +53,40 @@ export async function parseWorktreeList(): Promise<Worktree[]> {
   let current: Partial<Worktree> = {};
 
   for (const line of lines) {
-    if (line.startsWith("worktree ")) {
+    const trimmedLine = line.trim();
+    if (trimmedLine.startsWith("worktree ")) {
       // Save previous worktree if exists
       if (current.path) {
         worktrees.push(current as Worktree);
       }
-      current = { path: line.substring(9).trim() };
-    } else if (line.startsWith("HEAD ")) {
-      current.commit = line.substring(5).trim();
-    } else if (line.startsWith("branch ")) {
-      current.branch = line.substring(7).trim();
+      current = { 
+        path: trimmedLine.substring(9).trim(),
+        branch: "detached", // Default
+        commit: "unknown"   // Default
+      };
+    } else if (trimmedLine.startsWith("HEAD ")) {
+      current.commit = trimmedLine.substring(5).trim();
+    } else if (trimmedLine.startsWith("branch ")) {
+      const branchFull = trimmedLine.substring(7).trim();
+      // Strip refs/heads/ or refs/remotes/ prefix
+      if (branchFull.startsWith("refs/heads/")) {
+        current.branch = branchFull.substring(11);
+      } else if (branchFull.startsWith("refs/remotes/")) {
+        current.branch = branchFull.substring(13);
+      } else {
+        current.branch = branchFull;
+      }
       current.isDetached = false;
-    } else if (line.startsWith("detached")) {
+    } else if (trimmedLine.startsWith("detached")) {
       current.isDetached = true;
-      if (!current.branch) {
-        current.branch = "HEAD";
-      }
-    } else if (line.startsWith("bare")) {
+      current.branch = "detached";
+    } else if (trimmedLine.startsWith("bare")) {
       current.isBare = true;
-    } else if (line === "") {
+      current.branch = "bare";
+    } else if (trimmedLine === "" && current.path) {
       // Empty line indicates end of worktree entry
-      if (current.path) {
-        worktrees.push(current as Worktree);
-        current = {};
-      }
+      worktrees.push(current as Worktree);
+      current = {};
     }
   }
 
@@ -89,21 +100,34 @@ export async function parseWorktreeList(): Promise<Worktree[]> {
 
 /**
  * Get the main worktree path (usually the repository root)
+ * @param cwd Optional directory to start searching from
  */
-export async function getMainWorktreePath(): Promise<string> {
-  const { stdout, exitCode } = await execGit(["rev-parse", "--git-dir"]);
+export async function getMainWorktreePath(cwd?: string): Promise<string> {
+  // Use show-toplevel to find the root of the current worktree
+  const { stdout, exitCode } = await execGit(["rev-parse", "--show-toplevel"], cwd);
 
-  if (exitCode !== 0) {
-    throw new Error("Not a git repository");
+  if (exitCode === 0 && stdout.trim()) {
+    return stdout.trim();
   }
 
-  const gitDir = stdout.trim();
+  // Fallback to --git-dir if --show-toplevel fails (e.g. in a bare repo)
+  const { stdout: gitDirStdout, exitCode: gitDirExitCode } = await execGit(["rev-parse", "--git-dir"], cwd);
+
+  if (gitDirExitCode !== 0) {
+    throw new Error(`Not a git repository: ${cwd || process.cwd()}`);
+  }
+
+  const gitDir = gitDirStdout.trim();
   // If .git is a directory, the main worktree is its parent
-  // If .git is a file (submodule), parse it
-  if (gitDir.endsWith(".git")) {
-    return gitDir.substring(0, gitDir.length - 4);
+  if (gitDir === ".git") {
+    return cwd || process.cwd();
   }
-  return process.cwd();
+  if (gitDir.endsWith("/.git")) {
+    return gitDir.substring(0, gitDir.length - 5);
+  }
+  
+  // For other cases, return the directory containing the git dir
+  return cwd || process.cwd();
 }
 
 /**

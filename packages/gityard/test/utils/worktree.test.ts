@@ -36,7 +36,7 @@ describe("getWorktreeName", () => {
   });
 
   it("should return last component for paths with trailing slash", () => {
-    expect(getWorktreeName("path/to/feature/")).toBe("path/to/feature/");
+    expect(getWorktreeName("path/to/feature/")).toBe("feature");
   });
 
   it("should handle single character paths", () => {
@@ -54,7 +54,7 @@ describe("formatWorktree", () => {
     };
 
     const formatted = formatWorktree(worktree);
-    expect(formatted).toBe("/path/to/worktree feature-branch [abc123d]");
+    expect(formatted).toBe("worktree feature-branch [abc123d]");
   });
 
   it("should format worktree with detached HEAD", () => {
@@ -66,7 +66,7 @@ describe("formatWorktree", () => {
     };
 
     const formatted = formatWorktree(worktree);
-    expect(formatted).toBe("/path/to/worktree HEAD (detached) [abc123d]");
+    expect(formatted).toBe("worktree HEAD (detached) [abc123d]");
   });
 
   it("should format worktree with 7-char commit hash", () => {

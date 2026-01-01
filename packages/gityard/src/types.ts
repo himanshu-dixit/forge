@@ -12,6 +12,11 @@ export interface Worktree {
 
 export interface gityardConfig {
   scripts: Record<string, string | string[]>;
+  gitforge?: string;
+}
+
+export interface GlobalgityardConfig {
+  gitforge?: string;
 }
 
 export interface CLIOptions {

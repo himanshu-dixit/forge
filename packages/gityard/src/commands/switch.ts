@@ -4,7 +4,7 @@
 
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { parseWorktreeList, execGit, branchExistsLocally, branchExistsRemotely, listBranches } from "../utils/git";
+import { parseWorktreeList, execGit, branchExistsLocally, branchExistsRemotely, listBranches, getMainWorktreePath } from "../utils/git";
 import { getWorktreeName, isValidWorktreePath } from "../utils/worktree";
 import { existsSync } from "fs";
 
@@ -64,7 +64,8 @@ async function createWorktree(path: string, branch: string): Promise<string> {
  * Interactive prompt to select a worktree
  */
 async function promptWorktreeSelection(): Promise<string> {
-  const worktrees = await parseWorktreeList();
+  const repoRoot = await getMainWorktreePath();
+  const worktrees = await parseWorktreeList(repoRoot);
 
   // Format worktrees for inquirer
   const choices = worktrees.map((worktree) => {
@@ -144,7 +145,8 @@ async function promptWorktreeSelection(): Promise<string> {
  * @returns Worktree path
  */
 export async function switchWorktree(nameOrPath?: string, branch?: string): Promise<string> {
-  const worktrees = await parseWorktreeList();
+  const repoRoot = await getMainWorktreePath();
+  const worktrees = await parseWorktreeList(repoRoot);
 
   // If no nameOrPath provided, prompt for selection
   if (!nameOrPath) {
@@ -185,7 +187,8 @@ export async function switchWorktree(nameOrPath?: string, branch?: string): Prom
  */
 export async function switchWorktreeCLI(nameOrPath?: string, branch?: string, cdMode?: boolean): Promise<void> {
   try {
-    const worktrees = await parseWorktreeList();
+    const repoRoot = await getMainWorktreePath();
+    const worktrees = await parseWorktreeList(repoRoot);
     const existing = nameOrPath
       ? worktrees.find((wt) => wt.path === nameOrPath || getWorktreeName(wt.path) === nameOrPath)
       : null;

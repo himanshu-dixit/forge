@@ -29,8 +29,9 @@ program
 program
   .command("list")
   .description("List all worktrees")
-  .action(async () => {
-    await listWorktreesCLI();
+  .argument("[path]", "Path to the repository (optional, defaults to current directory)")
+  .action(async (path?: string) => {
+    await listWorktreesCLI(path);
   });
 
 program

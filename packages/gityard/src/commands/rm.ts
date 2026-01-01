@@ -3,7 +3,7 @@
  */
 
 import chalk from "chalk";
-import { execGit, parseWorktreeList } from "../utils/git";
+import { execGit, parseWorktreeList, getMainWorktreePath } from "../utils/git";
 import { getWorktreeName } from "../utils/worktree";
 
 /**
@@ -13,7 +13,8 @@ import { getWorktreeName } from "../utils/worktree";
  * @returns Success status
  */
 export async function rmWorktree(nameOrPath: string, force: boolean = false): Promise<boolean> {
-  const worktrees = await parseWorktreeList();
+  const repoRoot = await getMainWorktreePath();
+  const worktrees = await parseWorktreeList(repoRoot);
 
   // Find worktree by name or path
   const worktree = worktrees.find(
